@@ -5,12 +5,16 @@ Description:    a bash script to reinstall software after a sysuppgrade for LEDE
 Version:        0.1.0
 Date:           Thu, Jun 29 2017
 Author:         Callea Gaetano Andrea (aka cga)
-Based on:       based on Malte Forkel <malte.forkel@berlin.de> original script found here:
-                https://forum.openwrt.org/viewtopic.php?pid=194478#p194478
 Contributors:
 Languages:      BASH
 Location:       https://github.com/aasgit/lede-userpkgs
 
 VERSION HISTORY:
 
-0.1.0 - Initial release (based on mkforkel 0.2.1)
+0.1.0 - Initial release
+
+TODO:
+
+0.1.1 - implement install
+0.1.2 - implement dry-run
+0.2.0 - refactor to include customisable variables
