@@ -11,7 +11,7 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.1                                                                            #
+#      Version:           0.2.1.1                                                                          #
 #      Date:              Fri, Jun 30 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
@@ -36,11 +36,12 @@ fi
 
 SCRIPTN="${0##*/}"                                          # name of this script
 SCRPATH="/tmp"                                              # the path where to save the lists
-PKGLIST="$SCRPATH/opkg.pkgs.list"                           # default package list
-BCKLIST="$SCRPATH/opkg.pkgs.$(date +%F-%H%M%S).list"        # the backup list copy with date and time
+PKGLIST="$SCRPATH/opkg.pkgs.list.txt"                       # default package list
 INSTLST="$PKGLIST"                                          # the list to install packages from
-TEMPLST="$SCRPATH/opkg.temp.list"                           # dependencies list for --install
-DEPSLST="$SCRPATH/opkg.deps.list"                           # dependencies list for --install
+BCKLIST="$SCRPATH/opkg.pkgs.backup.$(date +%F-%H%M%S).txt"  # the backup list copy with date and time
+INSTLOG="$SCRPATH/opkg.pkgs.logs.$(date +%F-%H%M%S).txt"    # log file for the install process. just in case
+TEMPLST="$SCRPATH/opkg.pkgs.temp.txt"                       # dependencies list for --install
+DEPSLST="$SCRPATH/opkg.pkgs.deps.txt"                       # dependencies list for --install
 NOLIST=false                                                # if true: print to screen instead of file
 DRYRUN=false                                                # options for dry run. not there yet
 
@@ -79,20 +80,20 @@ cat <<README
 
     -- before sysupgrade: to create a list of currently user manually installed packages.
     -- before sysupgrade: to create a backup of configuration files.
-    -- after  sysupgrade: to reinstall those packages that are not part of the new firmware image.
+    -- after  sysupgrade: to reinstall the packages that were manually installed by the user.
     -- after  sysupgrade: to restore previously created configuration files backup.
 
 IMPORTANT: in both cases, run an update at least once (before and after sysupgrade!!!)
 
 To reinstall all packages that were not part of the firmware image, after the firmware upgrade, use the -i or --install command.
 
-To manually specify a [saved] list of pacakges, including path, without this option defaults to '$INSTLST':
-
-    $SCRIPTN --list listfile --install
-
 To perform a dry-run of install, it will print on screen instead of executing:
 
     $SCRIPTN --dry-run --install
+
+To manually specify a different [previously saved] list of pacakges, including path, without this option defaults to '$INSTLST':
+
+    $SCRIPTN [-d|--dry-run] --list listfile --install
 
 To restore previously created configuration files backup from an archive, user -x or --restore-config command.
 
@@ -185,8 +186,9 @@ bcklist() {
 ############################
 
 erase() {
+
 # let's get rid of the old packages lists (including backups!!!)
-    if ls $SCRPATH/opkg.*.list >/dev/null 2>&1 ; then
+    if ls $SCRPATH/opkg.pkgs.*.txt >/dev/null 2>&1 ; then
         local aretherefile=0
     else
         local aretherefile=1
@@ -203,7 +205,7 @@ erase() {
         echo "Do you want to remove these files?"
         echo
         if [ "$aretherefile" == 0 ] ; then
-            rm -i $SCRPATH/opkg.*.list
+            rm -i $SCRPATH/opkg.*.txt
         fi
         if [ "$aretherebcks" == 0 ] ; then
             rm -i $SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-*.tar.gz
@@ -217,9 +219,9 @@ erase() {
 
 ############################
 
-### not necessary in this script, but leaving it here for now....
 checkdeps() {
 # let's check the dependencies of packages in $INSTLST and create a dependencies list too
+    ### not necessary in this script, but leaving it here for now....
     echo
     echo "'checkdeps' is not needed. deps as in mforkel script is pointless here."
     echo "we already have an '$INSTLST' that is made of new pacakges only!!!!!!!!"
@@ -248,10 +250,13 @@ install() {
                     echo "THIS WAS A DRY-RUN....."
                 else
                     while IFS= read -r PACKAGE; do
-                        opkg install "$PACKAGE"
+                        opkg install "$PACKAGE" | tee -a "$INSTLOG"
                     done < "$INSTLST"
                     echo
-                    echo "Done! You may want to restore configurations now."
+                    echo "Done! You may want to restore configurations now..."
+                    echo
+                    echo "A log of --install is available: '$INSTLOG'"
+                    echo
                 fi
                 echo
                 exit 0

@@ -11,6 +11,7 @@ Location:       https://github.com/aasgit/lede-userpkgs
 
 VERSION HISTORY:
 
+0.2.1.1 - improved erase. tested all functionalities. install included.
 0.2.1 - implemented install with its options (-l -d)
 0.2.0.1 - fixed erase behaviour. minor cosmestics. added placeholder for restore config.
 0.2.0 - refactored script. better handling. more options. added backup of configs too.
