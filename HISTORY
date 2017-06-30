@@ -19,6 +19,8 @@ VERSION HISTORY:
 
 TODO:
 
-0.2.2 - implement config files restore
-0.2.3 - check options to go with the right command; check exit codes
-0.3.0 - refactor to include customisable variables
+0.2.2 - implement config files restore with sysupgrade
+0.2.3 - refactor the help command (like sysupgrade) and delete the readme command
+0.2.4 - check options to go with the right command; check exit codes
+0.3.0 - implement flashing/upgrades options
+0.4.0 - refactor to include customisable variables
