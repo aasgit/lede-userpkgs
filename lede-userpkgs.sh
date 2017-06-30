@@ -11,7 +11,7 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.0.1                                                                          #
+#      Version:           0.2.1                                                                            #
 #      Date:              Fri, Jun 30 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
@@ -39,9 +39,10 @@ SCRPATH="/tmp"                                              # the path where to 
 PKGLIST="$SCRPATH/opkg.pkgs.list"                           # default package list
 BCKLIST="$SCRPATH/opkg.pkgs.$(date +%F-%H%M%S).list"        # the backup list copy with date and time
 INSTLST="$PKGLIST"                                          # the list to install packages from
+TEMPLST="$SCRPATH/opkg.temp.list"                           # dependencies list for --install
+DEPSLST="$SCRPATH/opkg.deps.list"                           # dependencies list for --install
 NOLIST=false                                                # if true: print to screen instead of file
 DRYRUN=false                                                # options for dry run. not there yet
-GENASH=false                                                # generate a script of what 'install' would do
 
 ############################
 
@@ -67,7 +68,6 @@ Available commands:
 
 Options (see 'readme' command):
     -l   --list                    to use with 'install': manually specifiy a list file
-    -s   --gen-script              to use with 'install': output a script to copy and use
     -d   --dry-run                 to use with 'install': perform a dry run of install
 
 USAGE
@@ -93,10 +93,6 @@ To manually specify a [saved] list of pacakges, including path, without this opt
 To perform a dry-run of install, it will print on screen instead of executing:
 
     $SCRIPTN --dry-run --install
-
-To create a script file of what install would do, to examine and execute later:
-
-    $SCRIPTN --gen-script --install
 
 To restore previously created configuration files backup from an archive, user -x or --restore-config command.
 
@@ -127,9 +123,9 @@ listset() {
     ## second: let's get the list of all currently installed packages
     LSTINST=$(opkg list-installed | awk '{print $1}')
     ## now let's use those to determine the user installed packages list
-    for i in $LSTINST; do
-        if [ "$(opkg status $i | awk '/Installed-Time:/ {print $2}')" != "$FLASHTM" ]; then
-            echo $i
+    for PACKAGE in $LSTINST; do
+        if [ "$(opkg status $PACKAGE | awk '/Installed-Time:/ {print $2}')" != "$FLASHTM" ]; then
+            echo $PACKAGE
         fi
     done
 }
@@ -137,7 +133,7 @@ listset() {
 setlist() {
 if [ $NOLIST == true ]; then
         echo
-        echo "Here's the packages that were installed manually. This doesn't write to $PKGLIST:"
+        echo "Here's a list of the packages that were installed manually. This doesn't write to $PKGLIST:"
         sleep 3
         echo
         listset
@@ -163,24 +159,24 @@ bckcfg() {
     sysupgrade --create-backup "$SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-$(date +%F-%H%M%S).tar.gz"
 }
 
-## backup an existinf packages list previously created
+## backup an existing packages list previously created
 bcklist() {
     if [ -f $PKGLIST ]; then
         if [ -s $PKGLIST ]; then
             echo
-            echo "Copied the existing '$PKGLIST' to '$BCKLIST'"
             cp $PKGLIST $BCKLIST
+            echo "Copied the existing '$PKGLIST' to '$BCKLIST'"
             echo
             exit 0
         else
             echo
-            echo "the file '$PKGLIST' is empty! nothing to backup here..."
+            echo "The file '$PKGLIST' is empty! Nothing to backup here..."
             echo
             exit 2
         fi
     else
         echo
-        echo "the file '$PKGLIST' doesn't exist! nothing to backup here..."
+        echo "The file '$PKGLIST' doesn't exist! Nothing to backup here..."
         echo
         exit 3
     fi
@@ -221,28 +217,60 @@ erase() {
 
 ############################
 
+### not necessary in this script, but leaving it here for now....
+checkdeps() {
+# let's check the dependencies of packages in $INSTLST and create a dependencies list too
+    echo
+    echo "'checkdeps' is not needed. deps as in mforkel script is pointless here."
+    echo "we already have an '$INSTLST' that is made of new pacakges only!!!!!!!!"
+    echo
+    while IFS= read -r PACKAGE; do
+        opkg status "$PACKAGE" | awk '/Depends/ {for (i=2;i<=NF;i++) print $i}' | sed 's/,//g' >> "$TEMPLST"
+        cat "$TEMPLST" | sort -u >> "$DEPSLST"
+        rm -f "$TEMPLST" >/dev/null 2>&1
+    done < "$INSTLST"
+}
+
+############################
+
 install() {
     if [ $INSTLST ]; then
         if [ -f $INSTLST ]; then
             if [ -s $INSTLST ]; then
-                echo "install routine"
+                echo
+                echo "Installing packages from list '$INSTLST' : this may take a while..."
+                echo
+                if $DRYRUN; then
+                    while IFS= read -r PACKAGE; do
+                        echo opkg install "$PACKAGE"
+                    done < "$INSTLST"
+                    echo
+                    echo "THIS WAS A DRY-RUN....."
+                else
+                    while IFS= read -r PACKAGE; do
+                        opkg install "$PACKAGE"
+                    done < "$INSTLST"
+                    echo
+                    echo "Done! You may want to restore configurations now."
+                fi
+                echo
                 exit 0
             else
                 echo
-                echo "the file '$INSTLST' is empty!!! Can't install from this..."
+                echo "The file '$INSTLST' is empty!!! Can't install from this..."
                 echo
                 exit 5
             fi
         else
             echo
-            echo "The packages list file '$INSTLST' doesn't exist!!! Did you forget to create one or save it?"
+            echo "The packages list file '$INSTLST' doesn't exist!!! Did you forget to create or save one?"
             echo
             exit 6
         fi
-        echo "not implemented yet!!!"
-        exit 99
     else
+        echo
         echo "You must specify an install list argument to -l --list"
+        echo
         exit 99
     fi
 }
@@ -250,7 +278,9 @@ install() {
 ############################
 
 cfgrestore(){
-    echo "not implemented yet!!!"
+    echo
+    echo "NOT implemented yet!!!"
+    echo
     exit 99
 }
 
@@ -272,7 +302,6 @@ while true; do
         -x|--restore-config) cfgrestore; exit 0;;
         -i|--install) install; exit 0;;
         -l|--list) shift; INSTLST="$1"; shift;;
-        -s|--gen-script) GENASH=true; shift;;
         -d|--dry-run) DRYRUN=true; shift;;
         *) echo; echo "$SCRIPTN: unknown command '$1'"; usage; exit 127;;
     esac
