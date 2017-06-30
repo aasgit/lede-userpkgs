@@ -23,5 +23,5 @@ TODO:
 0.2.3 - refactor the help command (like sysupgrade) and delete the readme command
 0.2.4 - check options to go with the right command; check exit codes
 0.3.0 - implement flashing/upgrades options
-0.4.0 - at the moment this script requires bash. refactor to make it work with ash as well.
 0.4.0 - refactor to include customisable variables
+0.5.0 - at the moment this script requires bash. refactor to make it work with ash as well.
