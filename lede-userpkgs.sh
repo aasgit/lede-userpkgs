@@ -11,7 +11,7 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.0                                                                            #
+#      Version:           0.2.0.1                                                                          #
 #      Date:              Fri, Jun 30 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
@@ -35,9 +35,9 @@ fi
 ## GLOBAL VARIABLES
 
 SCRIPTN="${0##*/}"                                          # name of this script
-SCRPATH="/tmp"                                             # the path where to save the lists
-PKGLIST="$SCRPATH/opkg.pkgs.list"                          # default package list
-BCKLIST="$SCRPATH/opkg.pkgs.$(date +%F-%H%M%S).list"       # the backup list copy with date and time
+SCRPATH="/tmp"                                              # the path where to save the lists
+PKGLIST="$SCRPATH/opkg.pkgs.list"                           # default package list
+BCKLIST="$SCRPATH/opkg.pkgs.$(date +%F-%H%M%S).list"        # the backup list copy with date and time
 INSTLST="$PKGLIST"                                          # the list to install packages from
 NOLIST=false                                                # if true: print to screen instead of file
 DRYRUN=false                                                # options for dry run. not there yet
@@ -54,20 +54,21 @@ cat <<USAGE
 Usage: $SCRIPTN [options...] command
 
 Available commands:
-    -h   --help          print this help
-    -r   --readme        print a verbose version of this help
-    -u   --update        update the package database (do this at least once. see 'readme' command)
-    -g   --gen-list      create a list of currently manually installed packages to file
-    -p   --print-list    print a list to screen instead of writing to file
-    -b   --backup-list   backup a copy of the list of packages
-    -c   --backup-config backup configuration files with 'sysupgrade'
-    -e   --erase         remove the list files created by the script
-    -i   --install       read the package list from file and install them
+    -h   --help                    print this help
+    -r   --readme                  print a verbose version of this help
+    -u   --update                  update the opkg package database (do this at least once. see '--readme')
+    -g   --gen-list                create a list of currently manually installed packages to file
+    -p   --print-list              print a list to screen instead of writing to file
+    -b   --backup-list             backup a copy of the list of packages
+    -c   --backup-config           backup configuration files with 'sysupgrade'
+    -e   --erase                   interactively remove backup and list files created by the script
+    -i   --install                 read the package list from file and install them
+    -x   --restore-config          restore configuration files from an archive
 
 Options (see 'readme' command):
-    -l   --list          to use with 'install': manually specifiy a list
-    -s   --gen-script    to use with 'install': output a script
-    -d   --dry-run       to use with 'install': perform a dry run
+    -l   --list                    to use with 'install': manually specifiy a list file
+    -s   --gen-script              to use with 'install': output a script to copy and use
+    -d   --dry-run                 to use with 'install': perform a dry run of install
 
 USAGE
 }
@@ -77,7 +78,9 @@ cat <<README
 '$SCRIPTN' can be used:
 
     -- before sysupgrade: to create a list of currently user manually installed packages.
+    -- before sysupgrade: to create a backup of configuration files.
     -- after  sysupgrade: to reinstall those packages that are not part of the new firmware image.
+    -- after  sysupgrade: to restore previously created configuration files backup.
 
 IMPORTANT: in both cases, run an update at least once (before and after sysupgrade!!!)
 
@@ -85,15 +88,19 @@ To reinstall all packages that were not part of the firmware image, after the fi
 
 To manually specify a [saved] list of pacakges, including path, without this option defaults to '$INSTLST':
 
-    $SCRIPTN [-l|--list] listname install
+    $SCRIPTN --list listfile --install
 
 To perform a dry-run of install, it will print on screen instead of executing:
 
-    $SCRIPTN [-d|--dry-run] install
+    $SCRIPTN --dry-run --install
 
 To create a script file of what install would do, to examine and execute later:
 
-    $SCRIPTN [-s|--gen-script] install
+    $SCRIPTN --gen-script --install
+
+To restore previously created configuration files backup from an archive, user -x or --restore-config command.
+
+    $SCRIPTN --restore-config backupfile.tar.gz
 
 IMPORTANT: run an update at least once (before and after sysupgrade!!!)
 
@@ -106,7 +113,7 @@ README
 update() {
     echo
     echo "Updating the package list...."
-    opkg update 2>&1 >/dev/null
+    opkg update >/dev/null 2>&1
     echo
     echo "Done!"
 }
@@ -150,18 +157,14 @@ fi
 ############################
 
 ## backup configuration files, same as:
-### https://lede-project.org/docs/howto/backingup
-### https://wiki.openwrt.org/doc/howto/generic.backup#backup_openwrt_configuration
+# - https://lede-project.org/docs/howto/backingup
+# - https://wiki.openwrt.org/doc/howto/generic.backup#backup_openwrt_configuration
 bckcfg() {
     sysupgrade --create-backup "$SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-$(date +%F-%H%M%S).tar.gz"
 }
 
 ## backup an existinf packages list previously created
 bcklist() {
-    NOLIST=false # let reset this to false. just in case.
-    DRYRUN=false # let reset this to false. just in case.
-    GENASH=false # let reset this to false. just in case.
-
     if [ -f $PKGLIST ]; then
         if [ -s $PKGLIST ]; then
             echo
@@ -187,12 +190,28 @@ bcklist() {
 
 erase() {
 # let's get rid of the old packages lists (including backups!!!)
-    if ls $SCRPATH/opkg.*.list 2>&1 >/dev/null; then
+    if ls $SCRPATH/opkg.*.list >/dev/null 2>&1 ; then
+        local aretherefile=0
+    else
+        local aretherefile=1
+    fi
+
+    if ls $SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-*.tar.gz >/dev/null 2>&1 ; then
+        local aretherebcks=0
+    else
+        local aretherebcks=1
+    fi
+
+    if [ "$aretherefile" == 0 ] || [ "$aretherebcks" == 0 ] ; then
         echo
-        echo "Do you want to remove these files (READ THE FILE NAMES)?"
+        echo "Do you want to remove these files?"
         echo
-        rm -i $SCRPATH/opkg.*.list
-        rm -i $SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-*.tar.gz
+        if [ "$aretherefile" == 0 ] ; then
+            rm -i $SCRPATH/opkg.*.list
+        fi
+        if [ "$aretherebcks" == 0 ] ; then
+            rm -i $SCRPATH/backup-$(cat /proc/sys/kernel/hostname)-*.tar.gz
+        fi
         echo
     else
         echo "No files to delete. Bye..."
@@ -230,6 +249,13 @@ install() {
 
 ############################
 
+cfgrestore(){
+    echo "not implemented yet!!!"
+    exit 99
+}
+
+############################
+
 ## MAIN ##
 
 ## parse command line options and commands:
@@ -243,6 +269,7 @@ while true; do
         -b|--backup-list) bcklist; exit 0;;
         -c|--backup-config) bckcfg; exit 0;;
         -e|--erase) erase; exit 0;;
+        -x|--restore-config) cfgrestore; exit 0;;
         -i|--install) install; exit 0;;
         -l|--list) shift; INSTLST="$1"; shift;;
         -s|--gen-script) GENASH=true; shift;;
