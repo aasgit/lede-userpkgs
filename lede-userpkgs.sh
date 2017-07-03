@@ -11,7 +11,7 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.4.1                                                                          #
+#      Version:           0.2.4.2                                                                          #
 #      Date:              Mon, Jul 03 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
@@ -424,8 +424,8 @@ checkdryopt() {
 # perhaps a better skilled coder would help.
 checklistopt() {
     local listecho="\ne.g: $SCRIPTN [--dry-run] --list <listfile> --install-packages"
-    # if the list is not the default
-    if [ "$INSTLST" != "$PKGLIST" ]; then
+    # if the list is not the default and the string is not empty
+    if [ "$INSTLST" != "$PKGLIST" ] && [ -n "$INSTLST" ]; then
         #...if it is a directory, error
         if [ -d "$INSTLST" ]; then
             echo -e "\n'$INSTLST' is a directory.\n$listecho\n"
@@ -483,7 +483,7 @@ checklistopt() {
                         exit 27;;
                     #...THIS should never happen. Just trapping a possible exception
                     *)
-                        echo -e "\nEXCECPTION 999\n"
+                        echo -e "\nEXCEPTION 999\n"
                         exit 999;;
                 esac
             #...if it is a file and no --install-packages was specified, then error
@@ -491,11 +491,11 @@ checklistopt() {
                 echo -e "\nYou only have specified a file '$INSTLST'\nYou must use this with --install-packages!\n$listecho\n"
                 exit 28
             fi
-        else
-            #...just in case of no arguments
-            echo -e "\n--list requires an argument and it must be a valid list file:\n$listecho\n"
-            exit 29
         fi
+    # if the string is emtpy, then we make sure it fails
+    elif [ -z $"$INSTLST" ]; then
+        echo -e "\n--list requires an argument and it must be a valid list file:\n$listecho\n"
+        exit 29
     fi
 }
 
