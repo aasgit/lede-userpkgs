@@ -11,24 +11,14 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.3                                                                            #
-#      Date:              Sat, Jul 01 2017                                                                 #
+#      Version:           0.2.4                                                                            #
+#      Date:              Mon, Jul 03 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
 #      Language:          BASH                                                                             #
 #      Location:          https://github.com/aasgit/lede-userpkgs                                          #
 #                                                                                                          #
 ############################################################################################################
-
-############################
-
-# the script has to be run as root (or with sudo), let's make sure of that:
-if [ $EUID != 0 ]; then
-    echo
-    echo "You must run this script with root powers (sudo is fine too)."
-    echo
-    exit 1
-fi
 
 ############################
 
@@ -44,6 +34,28 @@ DEPSLST="$SCRPATH/opkg.pkgs.deps.txt"                       # final dependencies
 CFGBCKF="backup-$(cat /proc/sys/kernel/hostname)"           # config files backup file name
 NOLIST=false                                                # if true: print to screen instead of write file
 DRYRUN=false                                                # options for dry run
+
+############################
+
+# this script only works with bash. apologies.
+if ! which bash >/dev/null 2>&1 || [ -z "$BASH" ]; then
+cat <<BASHMSG
+
+    This script requires the bash shell. It does NOT work with ash. Apologies.
+    Hopefully the functionalities provided by this script, will be implemented
+    in 'sysupgrade' and 'LuCi' by LEDE and/or OpenWRT sooner rather than later.
+    Feel free to rewrite the script for ash or reuse the ideas to implement them!
+
+BASHMSG
+
+    exit 1
+fi
+
+# the script has to be run as root (or with sudo), let's make sure of that:
+if [ $EUID != 0 ]; then
+    echo -e "\nYou must run this script with root powers (sudo is fine too).\n"
+    exit 2
+fi
 
 ############################
 
@@ -103,24 +115,41 @@ listset() {
 setlist() {
 if [ $NOLIST == true ]; then
         # if true: print to screen instead of writing to a file
-        echo
-        echo "Here's a list of the packages that were installed manually. This doesn't write to $PKGLIST:"
+        echo -e "\nHere's a list of the packages that were installed manually. This doesn't write to $PKGLIST:\n"
         # let's give the user some time to read the above message
         sleep 3
-        echo
         listset
         # let the user know about it, just to avoid confusion and/or mistakes
-        echo
-        echo "NOTE: NO list was actually saved or created. Make sure to run: $SCRIPTN --gen-list"
-        echo
+        echo -e "\nNOTE: NO list was actually saved or created. Make sure to run: $SCRIPTN --gen-list\n"
     else
-        # else: create the actual packages list and notify the user where it was saved
-        echo
-        echo "Saving the package list of the current manually installed packages to $PKGLIST"
-        echo
-        listset >> "$PKGLIST"
-        echo "Done"
-        echo
+        # else: create the actual packages list and notify the user where it was saved....
+        if [ -f "$PKGLIST" ]; then
+            # ...should a list already exist, let the user decide if to create a backup copy, overwrite it or not
+            echo
+            read -p "The file '$PKGLIST' already exists, do you want to overwrite it? [y/N/b]  "
+            case $REPLY in
+                [Yy])
+                    echo -e "\nSaving the package list of the current manually installed packages to $PKGLIST"
+                    listset >> "$PKGLIST"
+                    echo -e "\nDone\n"
+                    exit 3
+                    ;;
+                [Bb])
+                    bcklist
+                    exit 4
+                    ;;
+                *)
+                    echo -e "\n'$PKGLIST' was left intact, remember to create a (new) list (should you need a new one)\n"
+                    exit 5
+                    ;;
+            esac
+        else
+            # if no existing package list file is found, create a new one
+            echo -e "\nSaving the package list of the current manually installed packages to $PKGLIST"
+            listset >> "$PKGLIST"
+            echo -e "\nDone\n"
+            exit 6
+        fi
 fi
 }
 
@@ -143,24 +172,18 @@ bcklist() {
             # backup the package list and notify the user where it was saved
             echo
             cp $PKGLIST $BCKLIST
-            echo "Copied the existing '$PKGLIST' to '$BCKLIST'"
-            echo
-            exit 0
+            echo -e "\nCopied the existing '$PKGLIST' to '$BCKLIST'\n"
         # ...IF it IS emtpy:
         else
             # let the user know about it, just to avoid confusion and/or mistakes
-            echo
-            echo "The file '$PKGLIST' is empty! Nothing to backup here..."
-            echo
-            exit 2
+            echo -e "\nThe file '$PKGLIST' is empty! Nothing to backup here...\n"
+            exit 7
         fi
     # if it DOESN'T exist:
     else
         # let the user know about it, just to avoid confusion and/or mistakes
-        echo
-        echo "The file '$PKGLIST' doesn't exist! Nothing to backup here..."
-        echo
-        exit 3
+        echo -e "\nThe file '$PKGLIST' doesn't exist! Nothing to backup here...\n"
+        exit 8
     fi
 }
 
@@ -186,9 +209,7 @@ erase() {
     # if files or backups are found...
     if [ "$aretherefiles" == 0 ] || [ "$aretherebackups" == 0 ] ; then
         # let the user decide whether to remove them:
-        echo
-        echo "Do you want to remove these files?"
-        echo
+        echo -e "\nDo you want to remove these files?\n"
         if [ "$aretherefiles" == 0 ] ; then
             rm -i $SCRPATH/opkg.*.txt
         fi
@@ -198,32 +219,9 @@ erase() {
         echo
     # if no files were found, let's just exit
     else
-        echo "No files to delete. Bye..."
-        echo
-        exit 4
+        echo -e "\nNo files to delete. Bye...\n"
+        exit 9
     fi
-}
-
-############################
-
-# this is not actually needed or used.
-# there is not check-dependencies command
-# just making a point.
-checkdeps() {
-    ### not necessary in this script, but leaving it here for now....
-    echo
-    echo "'checkdeps' is not needed. deps as in mforkel script is pointless here."
-    echo "we already have an '$INSTLST' that is made of manually installed pacakges!!!!!!!!"
-    echo "nevertheless, this script includes an improved version, just in case..."
-    echo
-    # let's remove any stale list first
-    rm -f "$TEMPLST" >/dev/null 2>&1
-    # let's check the dependencies of packages in $INSTLST and create a dependencies list too
-    while IFS= read -r PACKAGE; do
-        opkg status "$PACKAGE" | awk '/Depends/ {for (i=2;i<=NF;i++) print $i}' | sed 's/,//g' >> "$TEMPLST"
-        cat "$TEMPLST" | sort -u >> "$DEPSLST"
-        rm -f "$TEMPLST" >/dev/null 2>&1
-    done < "$INSTLST"
 }
 
 ############################
@@ -236,65 +234,42 @@ install() {
         if [ -f $INSTLST ]; then
             # ...and if INSTLST is not empty:
             if [ -s $INSTLST ]; then
-                echo
-                echo "Installing packages from list '$INSTLST' : this may take a while..."
+                echo -e "\nInstalling packages from list '$INSTLST' : this may take a while...\n"
                 # let's give the user some time to read the above message
                 sleep 3
-                echo
                 # if dryrun: print to screen instead of istalling
                 if $DRYRUN; then
                     while IFS= read -r PACKAGE; do
                         echo opkg install "$PACKAGE"
                     done < "$INSTLST"
                     # let the user know about it, just to avoid confusion and/or mistakes
-                    echo
-                    echo "NOTE: THIS WAS A DRY-RUN..... NO packages were actually installed."
-                    echo
-                    echo "Make sure to run: $SCRIPTN --install-packages"
+                    echo -e "\nNOTE: THIS WAS A DRY-RUN..... NO packages were actually installed.\n"
+                    echo -e "Make sure to run: $SCRIPTN --install-packages\n"
                 # if not dryrun, let's actually install the packages
                 else
                     while IFS= read -r PACKAGE; do
                         opkg install "$PACKAGE" | tee -a "$INSTLOG"
                     done < "$INSTLST"
-                    echo
                     # notify the user and provide a log file
-                    echo "Done! You may want to restore configurations now..."
-                    echo
-                    echo "A log of --install-packages is available: '$INSTLOG'"
-                    echo
+                    echo -e "\nDone! You may want to restore configurations now...\n"
+                    echo -e "A log of --install-packages is available: '$INSTLOG'\n"
                 fi
-                echo
-                exit 0
             # ...IF it IS emtpy:
             else
                 # let the user know about it, just to avoid confusion and/or mistakes
-                echo
-                echo "The file '$INSTLST' is empty!!! Can't install from this..."
-                echo
-                exit 5
+                echo -e "\nThe file '$INSTLST' is empty!!! Can't install from this...\n"
+                exit 10
             fi
         # if it DOESN'T exist:
         else
             # let the user know about it, just to avoid confusion and/or mistakes
-            echo
-            echo "The packages list file '$INSTLST' doesn't exist!!! Did you forget to create or save one?"
-            echo
-            exit 6
+            echo -e "\nThe packages list file '$INSTLST' doesn't exist!!! Did you forget to create or save one?\n"
+            exit 11
         fi
-    # (it should never get to this point... but as a safety net.
-    # if true... ...and it's a command (grep -)
-    elif [ $INSTLST ] && grep -q '^-' $INSTLST ; then
-            # let the user know about he cannot use commands as arguments...
-            echo
-            echo "You must specify a valid list argument to -l --list, '$INSTLST' is not a valid argument..."
-    # (it should never get to this point... but as a safety net.
-    # if false
+    #... IF FALSE (which should never happen unless $INSTLST=PKGLIST was deleted global variables...)
     else
-        # let the user know about it
-        echo
-        echo "You must specify an install list argument to -l --list"
-        echo
-        exit 99
+        echo -e "\nThis is bad.... did you change the value for variable '\$INSTLST' to 'NULL'?\n"
+        exit 12
     fi
 }
 
@@ -314,9 +289,7 @@ cfgrestore() {
         unset BCKFILES
         local BCKFILES=($(ls $SCRPATH/$CFGBCKF-*.tar.gz))
         # prompt the user to select from available backup files
-        echo
-        echo "These are the available backup files available for you:"
-        echo
+        echo -e "\nThese are the available backup files available for you:\n"
         OLDPS3=$PS3
         COLUMNS=10
         PS3=$'\nChoose the backup file to restore from by typing the corresponding number: '
@@ -330,40 +303,193 @@ cfgrestore() {
 
         echo
         if $DRYRUN; then
-            echo "This is a DRY RUN: here's a list of the files in '$BACKUP_FILE':"
+            echo -e "\nThis is a DRY RUN: here's a list of the files in '$BACKUP_FILE':\n"
             # let's give the user some time to read the above message
             sleep 3
-            echo
             sysupgrade --list-backup $BACKUP_FILE
             # notify the user of a dryrun, just to make sure and avoid mistakes or confusion
-            echo
-            echo "THIS WAS A DRY-RUN....."
-            echo
+            echo -e "\nTHIS WAS A DRY-RUN.....\n"
         else
             # if this is NOT a dryrun, let's ask for confirmation once more
-            read -p "Are you 100% positive about restoring from '$BACKUP_FILE'? [y/N]  "
+            read -p "Are you 100% positive about restoring from '$BACKUP_FILE'? [y/N]  ECHO FOR NOW...:  "
             # YES? then restore the backup files... (echo only for now. safe for test)
             if [[ $REPLY = [yY] ]] ; then
-                echo
-                echo sysupgrade --restore-backup $BACKUP_FILE
-                echo
+                echo -e "\nsysupgrade --restore-backup $BACKUP_FILE\n"
             else
             # NO? let's exit and notify the user
-                echo
-                echo "Good choice, make sure about '$BACKUP_FILE' first..."
-                echo
-                exit 88
+                echo -e "\nGood choice, make sure about '$BACKUP_FILE' first...\n"
+                exit 13
             fi
         fi
     # if NO backups files are found...
     else
         # let the user know, to avoid mistakes and confusion
-        echo
-        echo "No backup files to restore from were found in $SCRPATH !!!!"
-        echo
-        exit 99
+        echo -e "\nNo backup files to restore from were found in $SCRPATH !!!!\n"
+        exit 14
     fi
-    exit 100
+}
+
+
+############################
+
+###### CHECKS #####
+checkdeps() {
+# not necessary in this script, but leaving it here for now.... I might be wrong after all.
+cat <<CHECKDEPS
+
+    'checkdeps' is not needed. deps as in mforkel script is pointless here.
+    '$INSTLST' is made of manually installed pacakges only already!
+    Nevertheless, this script includes an improved version, just in case...
+
+CHECKDEPS
+
+    # let's remove any stale list first
+    rm -f "$TEMPLST" >/dev/null 2>&1
+    # let's check the dependencies of packages in $INSTLST and create a dependencies list too
+    while IFS= read -r PACKAGE; do
+        opkg status "$PACKAGE" | awk '/Depends/ {for (i=2; i<=NF; i++) print $i}' | sed 's/,//g' >> "$TEMPLST"
+        cat "$TEMPLST" | sort -u >> "$DEPSLST"
+        rm -f "$TEMPLST" >/dev/null 2>&1
+    done < "$INSTLST"
+    echo -e "\nA dependecies list is available at '$DEPSLST' for you to check.\n"
+}
+
+### let's make absolutely sure that the Options are run with the right Commands
+# check for a valid command (to use with the following options checks)
+# remember to add any new Commands to this case as well!!
+checkvalidcmd() {
+    case "$1" in
+        -h|--help)
+                true;;
+        -u|--update)
+                true;;
+        -g|--gen-list)
+                true;;
+        -p|--print-list)
+                true;;
+        -b|--backup-list)
+                true;;
+        -c|--backup-config)
+                true;;
+        -e|--erase-files)
+                true;;
+        -i|--install-packages)
+                true;;
+        -r|--restore-config)
+                true;;
+        *)
+                echo -e "\n$SCRIPTN: unknown command '$1' \n"
+                exit 15
+                ;;
+    esac
+}
+
+# we now check if the right Command is run with --dry-run
+checkdryopt() {
+    # if the user specifies a dry run, let's make sure that he runs it with [--list] --install-packages or --restore-config
+    if $DRYRUN; then
+        local dryrunecho="\ne.g: $SCRIPTN --dry-run [--list <listfile>] --install-packages\ne.g: $SCRIPTN --dry-run --restore-config"
+        case "$1" in
+            -l|--list)
+                    true
+                    checklistopt
+                    ;;
+            -i|--install-packages)
+                    true
+                    ;;
+            -r|--restore-config)
+                    true
+                    ;;
+            -d|--dry-run)
+                    echo -e "\nyou can specify --dry-run only once.....\n$dryrunecho\n"
+                    exit 16
+                    ;;
+            '')
+                    echo -e "\n--dry-run needs an argument:\n$dryrunecho\n"
+                    exit 17
+                    ;;
+            *)
+                    echo
+                    checkvalidcmd $1
+                    echo -e "--dry-run cannot be run with command '$1'\n$dryrunecho\n"
+                    exit 18
+                    ;;
+        esac
+    fi
+}
+
+# if the user specifies a listfile with --list, let's make sure of a few things first (before passing it to --install)
+# this is a bit messy but it seems to be trapping every case and to be working.
+# refactoring at some point. for now I am kind of happy about this, even though it's convoluted.
+# perhaps a better skilled coder would help.
+checklistopt() {
+    local listecho="\ne.g: $SCRIPTN [--dry-run] --list <listfile> --install-packages"
+    # if the list is not the default
+    if [ "$INSTLST" != "$PKGLIST" ]; then
+        # if --list has an additional argument...
+        if [ "$1" ] && [ "$2" ]; then
+            case "$2" in
+                # ...it cannot be --list again
+                -l|--list)
+                        echo -e "\nyou can specify --list only once.....\n$listecho\n"
+                        exit 19;;
+                # ...it cannot be --dry-run
+                -d|--dry-run)
+                        echo -e "\n--dry-run must precede the --list command\n\n$listecho\n"
+                        exit 20;;
+                # --install-packages is OK
+                -i|--install-packages)
+                        true;;
+                # everything else is checked to be a valid command or error
+                *)
+                        echo
+                        echo
+                        checkvalidcmd $2
+                        echo -e "--list cannot be run with command '$2':\n$listecho\n"
+                        exit 21;;
+            esac
+        # ... if --list is the only argument....
+        elif [ "$1" ]; then
+            if [ ! -f "$INSTLST" ] && [ ! -d "$INSTLST" ]; then
+                case "$1" in
+                    # ...it cannot be --list again
+                    -l|--list)
+                        echo -e "\nyou can specify --list only once.....\n$listecho\n"
+                        exit 22;;
+                    # ...it cannot be --dry-run
+                    -d|--dry-run)
+                        echo -e "\n--dry-run must precede the --list command\n$listecho\n"
+                        exit 23;;
+                    # ...it cannot be --install-packages without a valid listfile
+                    -i|--install-packages)
+                        echo -e "\n--install-packages must follow --list with a valid list file\n$listecho\n"
+                        exit 24;;
+                    #...it cannot be a not allowed command or an invalid command
+                    -*)
+                        echo
+                        checkvalidcmd $1
+                        echo -e "\n--list cannot be run with command '$1':\n$listecho\n"
+                        exit 25;;
+                    #...THIS should never happen. Just trapping a possible exception
+                    *)
+                        echo -e "\nEXCECPTION 888\n"
+                        exit 888;;
+                esac
+            #...if it is a file and no --install-packages was specified, then error
+            elif [ -f "$INSTLST" ]; then
+                echo -e "\nYou only have specified a file '$INSTLST'\nYou must use this with --install-packages!\n$listecho\n"
+                exit 26
+            #...if it is a directory, error
+            elif [ -d "$INSTLST" ]; then
+                echo -e "\n'$INSTLST' is a directory.\n$listecho\n"
+                exit 27
+            fi
+        else
+            #...just in case of no arguments
+            echo -e "\n--list requires an argument and it must be a valid list file:\n$listecho\n"
+            exit 28
+        fi
+    fi
 }
 
 ############################
@@ -380,11 +506,11 @@ while true; do
         -b|--backup-list) bcklist; exit 0;;
         -c|--backup-config) bckcfg; exit 0;;
         -e|--erase-files) erase; exit 0;;
-        -l|--list) shift; INSTLST="$1"; shift;;
         -i|--install-packages) install; exit 0;;
         -r|--restore-config) cfgrestore; exit 0;;
-        -d|--dry-run) DRYRUN=true; shift;;
-        *) echo; echo "$SCRIPTN: unknown command '$1'"; usage; exit 127;;
+        -d|--dry-run) DRYRUN=true; shift; checkdryopt "$1";;
+        -l|--list) shift; INSTLST="$1"; checklistopt "$1" "$2"; shift;;
+        *) echo; echo "$SCRIPTN: unknown command '$1'"; echo; exit 127;;
     esac
 done
 
