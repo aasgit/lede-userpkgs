@@ -11,7 +11,7 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.4                                                                            #
+#      Version:           0.2.4.1                                                                          #
 #      Date:              Mon, Jul 03 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
@@ -426,17 +426,27 @@ checklistopt() {
     local listecho="\ne.g: $SCRIPTN [--dry-run] --list <listfile> --install-packages"
     # if the list is not the default
     if [ "$INSTLST" != "$PKGLIST" ]; then
+        #...if it is a directory, error
+        if [ -d "$INSTLST" ]; then
+            echo -e "\n'$INSTLST' is a directory.\n$listecho\n"
+            exit 19
+        #...if the file doesn't exist, error
+        elif [ ! -e "$INSTLST" ]; then
+            echo -e "\nthe file '$INSTLST' doesn't exist.\n$listecho\n"
+            exit 20
+        fi
         # if --list has an additional argument...
         if [ "$1" ] && [ "$2" ]; then
+            # let's make sure it is the proper one
             case "$2" in
                 # ...it cannot be --list again
                 -l|--list)
                         echo -e "\nyou can specify --list only once.....\n$listecho\n"
-                        exit 19;;
+                        exit 21;;
                 # ...it cannot be --dry-run
                 -d|--dry-run)
                         echo -e "\n--dry-run must precede the --list command\n\n$listecho\n"
-                        exit 20;;
+                        exit 22;;
                 # --install-packages is OK
                 -i|--install-packages)
                         true;;
@@ -446,48 +456,45 @@ checklistopt() {
                         echo
                         checkvalidcmd $2
                         echo -e "--list cannot be run with command '$2':\n$listecho\n"
-                        exit 21;;
+                        exit 23;;
             esac
         # ... if --list is the only argument....
         elif [ "$1" ]; then
+            #...and it's not a file nor a directory...
             if [ ! -f "$INSTLST" ] && [ ! -d "$INSTLST" ]; then
                 case "$1" in
                     # ...it cannot be --list again
                     -l|--list)
                         echo -e "\nyou can specify --list only once.....\n$listecho\n"
-                        exit 22;;
+                        exit 24;;
                     # ...it cannot be --dry-run
                     -d|--dry-run)
                         echo -e "\n--dry-run must precede the --list command\n$listecho\n"
-                        exit 23;;
+                        exit 25;;
                     # ...it cannot be --install-packages without a valid listfile
                     -i|--install-packages)
                         echo -e "\n--install-packages must follow --list with a valid list file\n$listecho\n"
-                        exit 24;;
+                        exit 26;;
                     #...it cannot be a not allowed command or an invalid command
                     -*)
                         echo
                         checkvalidcmd $1
                         echo -e "\n--list cannot be run with command '$1':\n$listecho\n"
-                        exit 25;;
+                        exit 27;;
                     #...THIS should never happen. Just trapping a possible exception
                     *)
-                        echo -e "\nEXCECPTION 888\n"
-                        exit 888;;
+                        echo -e "\nEXCECPTION 999\n"
+                        exit 999;;
                 esac
             #...if it is a file and no --install-packages was specified, then error
-            elif [ -f "$INSTLST" ]; then
+            elif [ -f "$INSTLST" ] && [ "$1" != "--install-packages" ]; then
                 echo -e "\nYou only have specified a file '$INSTLST'\nYou must use this with --install-packages!\n$listecho\n"
-                exit 26
-            #...if it is a directory, error
-            elif [ -d "$INSTLST" ]; then
-                echo -e "\n'$INSTLST' is a directory.\n$listecho\n"
-                exit 27
+                exit 28
             fi
         else
             #...just in case of no arguments
             echo -e "\n--list requires an argument and it must be a valid list file:\n$listecho\n"
-            exit 28
+            exit 29
         fi
     fi
 }

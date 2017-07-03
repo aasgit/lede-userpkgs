@@ -2,7 +2,7 @@ CURRENT VERSION:
 
 Name:            lede-userpkgs.sh
 Description:     a bash script to reinstall software after a sysuppgrade for LEDE and OpenWRT.
-Version:         0.2.4
+Version:         0.2.4.1
 Date:            Mon, Jul 03 2017
 Author:          Callea Gaetano Andrea (aka cga)
 Contributors:
@@ -11,6 +11,7 @@ Location:        https://github.com/aasgit/lede-userpkgs
 
 VERSION HISTORY:
 
+0.2.4.1 - fixed wrong behaviour in check options. it works now.
 0.2.4   - added bash requirement. check options to go with the right command. fixed all the ugly echoes with -e.
 0.2.3   - refactored the help command. deleted the readme command. added loads of comments. changed some commands names.
 0.2.2   - implemented config restore. changed path to safer /tmp/tmp ; tested all functionalities. restore included.
@@ -22,7 +23,7 @@ VERSION HISTORY:
 
 TODO:
 
-0.2.4.1 - check $# to match Commands; else too many arguments.
+0.2.5   - check $# to match Commands; else too many arguments.
 0.3.0   - implement flashing/upgrades options
 0.4.0   - it is messy... split the functions into dir/files.
 0.5.0   - refactor to include customisable variables
