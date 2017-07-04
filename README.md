@@ -9,6 +9,13 @@ This script makes it easy(-er) to reinstall packages after a sysupgrade, at leas
     * after  sysupgrade: reinstall the packages that were manually installed by the user.
     * after  sysupgrade: restore previously created configuration files with 'sysupgrade'.
 
+## DISCLAIMER
+
+This script has not been tested throughly yet and, anyway, its functionality might break pretty easily because of differences between LEDE versions. i.e: packages get renamed, dependencies resolution and things alike.
+It is meant as both personal use and an itch to scratch. You are better of learning how to create your own 'sysupgrade.bin' image for your router. Read about it [here.](https://lede-project.org/docs/user-guide/imagebuilder)
+
+## VERSION AND TODO
+
 See HISTORY for info on version history and TODO.
 
 ## LICENSE
@@ -43,3 +50,4 @@ A LICENSE file containing a verbatim copy of the GPLv2 is included in this packa
 
 * Q:  Can I reuse the idea to make an application??
 * A:  Hopefully these features will be provided by LEDE/OpenWRT ('sysupgrade' or 'LuCi') at some point.
+
