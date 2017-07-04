@@ -11,8 +11,8 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs.sh                                                                 #
-#      Version:           0.2.4.2                                                                          #
-#      Date:              Mon, Jul 03 2017                                                                 #
+#      Version:           0.2.4.3                                                                          #
+#      Date:              Tue, Jul 04 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
 #      Language:          BASH                                                                             #
@@ -25,11 +25,12 @@
 ##### GLOBAL VARIABLES #####
 SCRIPTN="${0##*/}"                                          # name of this script
 SCRPATH="/tmp/tmp"                                          # the path where to save the lists
+TMPLIST="$SCRPATH/opkg.pkgs.ltmp.txt"                       # default package list
 PKGLIST="$SCRPATH/opkg.pkgs.list.txt"                       # default package list
 INSTLST="$PKGLIST"                                          # the list to install packages from
 BCKLIST="$SCRPATH/opkg.pkgs.backup.$(date +%F-%H%M%S).txt"  # the backup list copy with date and time
 INSTLOG="$SCRPATH/opkg.pkgs.logs.$(date +%F-%H%M%S).txt"    # log file for the install process. just in case
-TEMPLST="$SCRPATH/opkg.pkgs.temp.txt"                       # temp dependencies list for --install-packages
+TEMPLST="$SCRPATH/opkg.pkgs.dtmp.txt"                       # temp dependencies list for --install-packages
 DEPSLST="$SCRPATH/opkg.pkgs.deps.txt"                       # final dependencies list for --install-packages
 CFGBCKF="backup-$(cat /proc/sys/kernel/hostname)"           # config files backup file name
 NOLIST=false                                                # if true: print to screen instead of write file
@@ -101,15 +102,26 @@ USAGE
 # gen-list command
 listset() {
     ## first: let's get the epoc time of busybox as a time reference
-    FLASHTM=$(opkg status busybox | awk '/Installed-Time/ {print $2}')
+    FLASHTIME=$(opkg status busybox | awk '/Installed-Time/ {print $2}')
     ## second: let's get the list of all currently installed packages
-    LSTINST=$(opkg list-installed | awk '{print $1}')
-    ## now let's use those to determine the user installed packages list
-    for PACKAGE in $LSTINST; do
-        if [ "$(opkg status $PACKAGE | awk '/Installed-Time:/ {print $2}')" != "$FLASHTM" ]; then
-            echo $PACKAGE
+    LISTINSTALLED=$(opkg list-installed | awk '{print $1}')
+
+    # let's remove any stale list first
+    rm -f "$TMPLIST" >/dev/null 2>&1
+
+    ## now let's use those to determine the packages that were installed AFTER flashtime
+    for PACKAGE in $LISTINSTALLED; do
+        if [ "$(opkg status $PACKAGE | awk '/Installed-Time/ {print $2}')" != "$FLASHTIME" ]; then
+            echo $PACKAGE >> "$TMPLIST"
         fi
     done
+
+    ## now let's use those to determine the user installed packages list (status is really handy here!)
+    while IFS= read -r PACKAGE; do
+        if opkg status $PACKAGE | grep -q user; then
+            echo $PACKAGE
+        fi
+    done < "$TMPLIST"
 }
 
 setlist() {
@@ -130,6 +142,7 @@ if [ $NOLIST == true ]; then
             case $REPLY in
                 [Yy])
                     echo -e "\nSaving the package list of the current manually installed packages to $PKGLIST"
+                    rm -f "$PKGLIST" >/dev/null >2&1
                     listset >> "$PKGLIST"
                     echo -e "\nDone\n"
                     exit 3
@@ -334,7 +347,7 @@ cfgrestore() {
 
 ###### CHECKS #####
 checkdeps() {
-# not necessary in this script, but leaving it here for now.... I might be wrong after all.
+# not necessary in this script, but leaving it here anyway...
 cat <<CHECKDEPS
 
     'checkdeps' is not needed. deps as in mforkel script is pointless here.
