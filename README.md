@@ -46,7 +46,7 @@ A LICENSE file containing a verbatim copy of the GPLv2 is included in this packa
 * A:  For any suggestions and contributions contact cga @ callea (._dot_.) gaetano (_.dot_.) andrea (._at_.) gmail (._dot_.) com
 
 * Q:  Can I reuse the script to make my own??
-* A:  Hey this is Free Software!! you can do whatever the licence I chose allows you to. AS LONG AS YOU RESPECT THE LICENCE ITSELF of course ;)
+* A:  Hey this is Free Software!! you can do whatever the license I chose allows you to. AS LONG AS YOU RESPECT THE LICENSE ITSELF of course ;)
 
 * Q:  Can I reuse the idea to make an application??
 * A:  Hopefully these features will be provided by LEDE/OpenWRT ('sysupgrade' or 'LuCi') at some point.
