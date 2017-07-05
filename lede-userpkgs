@@ -1,0 +1,88 @@
+#!/bin/bash
+
+############################################################################################################
+#                                                                                                          #
+#      This script is Free Software, it's licensed under the GPLv2 and has ABSOLUTELY NO WARRANTY          #
+#                                                                                                          #
+############################################################################################################
+#                                                                                                          #
+#      Please see the LICENSE; and the README file for information, Version History and TODO               #
+#                                                                                                          #
+############################################################################################################
+#                                                                                                          #
+#      Name:              lede-userpkgs                                                                    #
+#      Version:           0.3.0                                                                            #
+#      Date:              Wed, Jul 05 2017                                                                 #
+#      Author:            Callea Gaetano Andrea (aka cga)                                                  #
+#      Contributors:                                                                                       #
+#      Language:          BASH                                                                             #
+#      Location:          https://github.com/aasgit/lede-userpkgs                                          #
+#                                                                                                          #
+############################################################################################################
+
+############################
+
+##### GLOBAL VARIABLES #####
+SCRIPTN="${0##*/}"                                          # name of this script
+SCRPATH="/tmp/tmp"                                          # the path where to save the lists
+TMPLIST="$SCRPATH/opkg.pkgs.ltmp.txt"                       # temporary package list for gen-list
+PKGLIST="$SCRPATH/opkg.pkgs.list.txt"                       # default package list
+INSTLST="$PKGLIST"                                          # the list to install packages from
+BCKLIST="$SCRPATH/opkg.pkgs.backup.$(date +%F-%H%M%S).txt"  # the backup list copy with date and time
+INSTLOG="$SCRPATH/opkg.pkgs.logs.$(date +%F-%H%M%S).txt"    # log file for the install process. just in case
+CFGBCKF="backup-$(cat /proc/sys/kernel/hostname)"           # config files backup file name
+NOLIST=false                                                # if true: print to screen instead of write file
+DRYRUN=false                                                # options for dry run
+
+############################
+
+# this script only works with bash. apologies.
+if ! which bash >/dev/null 2>&1 || [ -z "$BASH" ]; then
+cat <<BASHMSG
+
+    This script requires the bash shell. It does NOT work with ash. Apologies.
+    Hopefully the functionalities provided by this script, will be implemented
+    in 'sysupgrade' and 'LuCi' by LEDE and/or OpenWRT sooner rather than later.
+    Feel free to rewrite the script for ash or reuse the ideas to implement them!
+
+BASHMSG
+
+    exit 1
+fi
+
+# the script has to be run as root (or with sudo), let's make sure of that:
+if [ $EUID != 0 ]; then
+    echo -e "\nYou must run this script with root powers (sudo is fine too).\n"
+    exit 2
+fi
+
+############################
+
+###### FUNCTIONS #####
+
+## source all functions files
+for f in functions/*.bash ; do . "$f" ; done
+
+############################
+
+## MAIN ##
+
+## parse command line options and commands:
+while true; do
+    case "$1" in
+        '') echo -e "\n$SCRIPTN: no arguments supplied"; usage; exit 0;;
+        -h|--help) usage; exit 0;;
+        -u|--update) opkg update; exit 0;;
+        -g|--gen-list) setlist; exit 0;;
+        -p|--print-list) NOLIST=true; setlist; exit 0;;
+        -b|--backup-list) bcklist; exit 0;;
+        -c|--backup-config) bckcfg; exit 0;;
+        -e|--erase-files) erase; exit 0;;
+        -i|--install-packages) install; exit 0;;
+        -r|--restore-config) cfgrestore; exit 0;;
+        -d|--dry-run) DRYRUN=true; shift; checkdryopt "$1";;
+        -l|--list) shift; INSTLST="$1"; checklistopt "$1" "$2"; shift;;
+        *) echo -e "\n$SCRIPTN: unknown command '$1'"; echo; exit 127;;
+    esac
+done
+
