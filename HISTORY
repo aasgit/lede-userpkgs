@@ -27,6 +27,9 @@ VERSION HISTORY:
 TODO:
 
 0.3.1   - check $# to match Commands; else too many arguments.
+
+POSSIBLY NEVER:
+
 0.4.0   - not sure: implement flashing/upgrades options (or better to use image builder and luci?)
 0.5.0   - not sure: refactor to include customisable variables (perhaps...)
 
