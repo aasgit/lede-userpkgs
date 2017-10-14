@@ -21,6 +21,7 @@ backup commands:
 
 install/restore commands:
 
+    ###  do not use install. see http://github.com/aasgit/lede-buildwrapper instead !!!  ###
     -i | --install-packages   install all packages that were not part of the firmware image,
                               after the firmware upgrade, from a (previously saved) list
 

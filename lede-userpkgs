@@ -11,8 +11,8 @@
 ############################################################################################################
 #                                                                                                          #
 #      Name:              lede-userpkgs                                                                    #
-#      Version:           0.3.0                                                                            #
-#      Date:              Wed, Jul 05 2017                                                                 #
+#      Version:           0.3.1                                                                            #
+#      Date:              Sat, Oct 14 2017                                                                 #
 #      Author:            Callea Gaetano Andrea (aka cga)                                                  #
 #      Contributors:                                                                                       #
 #      Language:          BASH                                                                             #
@@ -78,7 +78,7 @@ while true; do
         -b|--backup-list) bcklist; exit 0;;
         -c|--backup-config) bckcfg; exit 0;;
         -e|--erase-files) erase; exit 0;;
-        -i|--install-packages) install; exit 0;;
+        ###-i|--install-packages) install; exit 0;; ## do not  use!!! see http://github.com/aasgit/lede-buildwrapper
         -r|--restore-config) cfgrestore; exit 0;;
         -d|--dry-run) DRYRUN=true; shift; checkdryopt "$1";;
         -l|--list) shift; INSTLST="$1"; checklistopt "$1" "$2"; shift;;
