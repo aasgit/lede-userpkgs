@@ -1,19 +1,15 @@
 # DESCRIPTION
 
-This script makes it easy(-er) to generate a list of packages from a clean installation of LEDE, after which you have installed and configured a number of extra packages and functionalities. For example:
+This script makes it easy to generate a list of packages from a clean installation of LEDE, after which you have installed and configured a number of extra packages and functionalities. For example:
 
-    * install LEDE from factory img
-    * install and configure a number of packages
-    * use this script to create an opkg list of 'extra' packages and files (from previous point)
-    * use the list with https://github.com/aasgit/lede-buildwrapper to create your own factory img
+    * [install](https://lede-project.org/docs/guide-quick-start/start) LEDE [from factory](https://lede-project.org/docs/guide-quick-start/factory_installation) img
+    * [install and configure](https://lede-project.org/docs/start) a number of packages you deem necessary for your router
+    * use this very script to create an opkg list of 'extra' packages and their configuration files (from previous point)
+    * use the opkg list and the configuration files with [lede buildwrapper](https://github.com/aasgit/lede-buildwrapper) to create your own factory img
 
 ## DISCLAIMER
 
 This script has not been tested throughly yet and, anyway, its functionality might break pretty easily because of differences between LEDE versions. i.e: packages get renamed, dependencies resolution and things alike. It is meant as both personal use and an itch to scratch. You are better of learning how to create your own 'sysupgrade.bin' image for your router. Read about it [here.](https://lede-project.org/docs/user-guide/imagebuilder)
-
-## VERSION AND TODO
-
-See HISTORY for info on version history and TODO.
 
 ## LICENSE
 
